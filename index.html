@@ -1149,21 +1149,61 @@
       // 兼容性检查：安卓手机浏览器可能不支持Web Speech API
       if (!window.speechSynthesis) {
         console.log('语音合成API不支持，文本：' + text);
+        speakTextFallback(text); // 使用备选方案
         return;
       }
       
       try {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
+        
+        // 增强语音合成配置，针对read/reads发音问题
         utterance.lang = 'en-US';
-        utterance.rate = 0.9;
+        utterance.rate = 0.8; // 稍微降低语速，提高清晰度
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // 特殊处理：针对read相关单词的发音纠正
+        if (text.includes('read') || text.includes('reads') || text.includes('reading')) {
+          console.log('处理read相关单词发音：', text);
+          // 尝试不同的语音引擎配置
+          utterance.rate = 0.7; // 更慢的语速
+          utterance.pitch = 0.9; // 稍微降低音调
+        }
+        
         utterance.onerror = function(event) {
-          console.log('语音合成错误：', event.error);
+          console.log('语音合成错误：', event.error, '文本：', text);
+          speakTextFallback(text); // Web Speech API失败时使用备选方案
         };
+        
+        utterance.onend = function() {
+          console.log('语音播放完成：', text);
+        };
+        
         window.speechSynthesis.speak(utterance);
       } catch (error) {
-        console.log('语音合成异常：', error);
+        console.log('语音合成异常：', error, '文本：', text);
+        speakTextFallback(text); // 异常时使用备选方案
       }
+    }
+    
+    // 语音合成备选方案：使用在线TTS服务
+    function speakTextFallback(text) {
+      console.log('使用备选语音方案：', text);
+      
+      // 简单的文本提示（作为最后的手段）
+      if (text.includes('read') && text.includes('reads')) {
+        alert('提示：read 读作 /riːd/，reads 读作 /riːdz/');
+      } else if (text.includes('read') && text.includes('reading')) {
+        alert('提示：read 读作 /riːd/，reading 读作 /ˈriːdɪŋ/');
+      } else if (text === 'read') {
+        alert('提示：read 读作 /riːd/（长音）');
+      } else if (text === 'reads') {
+        alert('提示：reads 读作 /riːdz/（长音）');
+      }
+      
+      // 这里可以集成第三方TTS服务，如Google TTS API等
+      // 由于需要API密钥，这里使用简单的文本提示
     }
 
     function animateWord(base, changed, type) {
